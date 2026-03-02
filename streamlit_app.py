@@ -38,7 +38,7 @@ else:
 
 def get_clara_response(user_input, history):
     try:
-        model = genai.GenerativeModel('gemini-3-flash-preview')
+        model = genai.GenerativeModel('gemini-3.1-pro-preview')
         
         system_instruction = f"""
         Você é a Clara, uma assistente virtual de atendimento para a farmácia {st.session_state.settings['name']}.
@@ -71,16 +71,31 @@ def get_clara_response(user_input, history):
 
 def extract_from_file(uploaded_file):
     try:
-        model = genai.GenerativeModel('gemini-3-flash-preview')
+        # Usando o modelo Pro para melhor extração de tabelas e dados complexos
+        model = genai.GenerativeModel('gemini-3.1-pro-preview')
         
         if uploaded_file.type.startswith('image'):
             image = Image.open(uploaded_file)
-            prompt = "Extraia produtos e preços desta imagem. Formate como: 'Produto - R$ Preço'."
+            prompt = """
+            Analise cuidadosamente esta imagem e extraia TODOS os produtos e seus respectivos preços.
+            Muitas vezes os dados podem estar em tabelas ou listas.
+            Formate o resultado como uma lista simples, uma linha por produto: 'Produto - R$ Preço'.
+            Não inclua cabeçalhos ou rodapés, apenas a lista de produtos e preços.
+            """
             response = model.generate_content([prompt, image])
             return response.text
         elif uploaded_file.type == "application/pdf":
             pdf_data = uploaded_file.read()
-            prompt = "Extraia todos os nomes de produtos e seus respectivos preços deste documento PDF. Formate como uma lista simples: 'Produto - R$ Preço'. Retorne apenas a lista."
+            prompt = """
+            Analise este documento PDF completo. Extraia TODOS os nomes de produtos e seus respectivos preços, 
+            incluindo aqueles que estão dentro de tabelas, grades ou listas em qualquer página do documento.
+            
+            REGRAS:
+            1. Formate como uma lista simples: 'Produto - R$ Preço'.
+            2. Extraia absolutamente todos os itens encontrados.
+            3. Se houver tabelas, percorra cada linha e coluna para não perder nenhum dado.
+            4. Retorne APENAS a lista formatada, sem introduções ou explicações.
+            """
             response = model.generate_content([
                 prompt,
                 {
@@ -94,7 +109,14 @@ def extract_from_file(uploaded_file):
             content = uploaded_file.read().decode("utf-8", errors="ignore")
             if not content.strip():
                 return "O arquivo parece estar vazio."
-            prompt = f"Extraia produtos e preços deste texto e formate como 'Produto - R$ Preço':\n\n{content}"
+            prompt = f"""
+            Extraia TODOS os produtos e preços deste texto e formate como 'Produto - R$ Preço'.
+            Certifique-se de capturar todos os itens, mesmo que estejam em formato tabular ou CSV.
+            Retorne apenas a lista formatada.
+            
+            Texto:
+            {content}
+            """
             response = model.generate_content(prompt)
             return response.text
     except Exception as e:
