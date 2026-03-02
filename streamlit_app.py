@@ -38,7 +38,7 @@ else:
 
 def get_clara_response(user_input, history):
     try:
-        model = genai.GenerativeModel('gemini-3.1-pro-preview')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
         system_instruction = f"""
         Você é a Clara, uma assistente virtual de atendimento para a farmácia {st.session_state.settings['name']}.
@@ -71,7 +71,7 @@ def get_clara_response(user_input, history):
 
 def extract_from_file(uploaded_file):
     try:
-        model = genai.GenerativeModel('gemini-3.1-pro-preview')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
         if uploaded_file.type.startswith('image'):
             image = Image.open(uploaded_file)
