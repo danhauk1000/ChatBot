@@ -147,9 +147,25 @@ with tabs[1]:
         if uploaded_file is not None:
             if st.button("Extrair com IA"):
                 with st.spinner("Analisando arquivo..."):
-                    extracted_text = extract_from_file(uploaded_file)
-                    st.text_area("Resultado da Extração (Copie para o catálogo)", value=extracted_text, height=300)
-                    st.info("Revise o texto acima e adicione manualmente ao seu catálogo à esquerda.")
+                    st.session_state.extracted_text = extract_from_file(uploaded_file)
+            
+            if "extracted_text" in st.session_state:
+                st.text_area("Resultado da Extração", value=st.session_state.extracted_text, height=300, key="current_extraction")
+                
+                if st.button("➕ Adicionar ao Catálogo Automaticamente"):
+                    # Append to catalog
+                    if st.session_state.catalog.strip():
+                        st.session_state.catalog += "\n" + st.session_state.extracted_text
+                    else:
+                        st.session_state.catalog = st.session_state.extracted_text
+                    
+                    # Clear extraction after adding
+                    del st.session_state.extracted_text
+                    
+                    st.success("Texto adicionado ao catálogo!")
+                    st.rerun()
+                
+                st.info("Revise o texto acima antes de adicionar ou edite manualmente no campo à esquerda.")
 
 # --- Tab 3: Settings ---
 with tabs[2]:
