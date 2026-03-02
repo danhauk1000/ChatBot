@@ -38,7 +38,7 @@ else:
 
 def get_clara_response(user_input, history):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         system_instruction = f"""
         Você é a Clara, uma assistente virtual de atendimento para a farmácia {st.session_state.settings['name']}.
