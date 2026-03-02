@@ -24,63 +24,72 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # --- Gemini API Setup ---
-# In Streamlit, you should set GEMINI_API_KEY in your secrets or environment
-api_key = os.getenv("GEMINI_API_KEY")
+# No Streamlit Cloud, use st.secrets. Localmente, use variáveis de ambiente.
+api_key = None
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+else:
+    api_key = os.getenv("GEMINI_API_KEY")
+
 if api_key:
     genai.configure(api_key=api_key)
 else:
-    st.error("Por favor, configure a variável de ambiente GEMINI_API_KEY.")
+    st.error("⚠️ Chave de API não encontrada! Configure 'GEMINI_API_KEY' nos Secrets do Streamlit ou como variável de ambiente.")
 
 def get_clara_response(user_input, history):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    system_instruction = f"""
-    Você é a Clara, uma assistente virtual de atendimento para a farmácia {st.session_state.settings['name']}.
-    Seu objetivo é ser prestativa, educada e eficiente.
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        system_instruction = f"""
+        Você é a Clara, uma assistente virtual de atendimento para a farmácia {st.session_state.settings['name']}.
+        Seu objetivo é ser prestativa, educada e eficiente.
 
-    INFORMAÇÕES DA FARMÁCIA:
-    - Endereço: {st.session_state.settings['address']}
-    - Telefone: {st.session_state.settings['phone']}
-    - Horário: {st.session_state.settings['openingHours']}
+        INFORMAÇÕES DA FARMÁCIA:
+        - Endereço: {st.session_state.settings['address']}
+        - Telefone: {st.session_state.settings['phone']}
+        - Horário: {st.session_state.settings['openingHours']}
 
-    CATÁLOGO DE PRODUTOS E PREÇOS:
-    {st.session_state.catalog}
+        CATÁLOGO DE PRODUTOS E PREÇOS:
+        {st.session_state.catalog}
 
-    REGRAS CRÍTICAS:
-    1. Use APENAS os preços listados no catálogo acima.
-    2. Se um produto não estiver no catálogo, informe educadamente que não temos no momento ou peça para o cliente consultar um atendente humano.
-    3. NUNCA invente preços ou descontos que não estejam documentados.
-    4. Mantenha um tom profissional e acolhedor.
-    5. Responda sempre em Português do Brasil.
-    """
-    
-    # Format history for Gemini
-    chat = model.start_chat(history=[])
-    # We'll simulate the system instruction by prepending it or using the model's system_instruction feature if available
-    # For simplicity in this script, we'll use a single prompt with context
-    
-    full_prompt = f"{system_instruction}\n\nHistórico da conversa:\n"
-    for msg in history:
-        full_prompt += f"{msg['role']}: {msg['content']}\n"
-    full_prompt += f"user: {user_input}\nclara:"
-    
-    response = model.generate_content(full_prompt)
-    return response.text
+        REGRAS CRÍTICAS:
+        1. Use APENAS os preços listados no catálogo acima.
+        2. Se um produto não estiver no catálogo, informe educadamente que não temos no momento.
+        3. NUNCA invente preços.
+        4. Responda sempre em Português do Brasil.
+        """
+        
+        full_prompt = f"{system_instruction}\n\nHistórico:\n"
+        for msg in history:
+            full_prompt += f"{msg['role']}: {msg['content']}\n"
+        full_prompt += f"user: {user_input}\nclara:"
+        
+        response = model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        return f"❌ Erro na Clara: {str(e)}"
 
 def extract_from_file(uploaded_file):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    if uploaded_file.type.startswith('image'):
-        image = Image.open(uploaded_file)
-        prompt = "Extraia todos os nomes de produtos e seus respectivos preços desta imagem. Formate como uma lista simples: 'Produto - R$ Preço'. Retorne apenas a lista."
-        response = model.generate_content([prompt, image])
-    else:
-        # For PDF/Text, read as string
-        content = uploaded_file.read().decode("utf-8", errors="ignore")
-        prompt = f"Extraia produtos e preços deste texto e formate como 'Produto - R$ Preço':\n\n{content}"
-        response = model.generate_content(prompt)
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-    return response.text
+        if uploaded_file.type.startswith('image'):
+            image = Image.open(uploaded_file)
+            prompt = "Extraia produtos e preços desta imagem. Formate como: 'Produto - R$ Preço'."
+            response = model.generate_content([prompt, image])
+            return response.text
+        elif uploaded_file.type == "application/pdf":
+            return "⚠️ O suporte direto a PDF via texto está sendo aprimorado. Por favor, use uma imagem (print) da lista por enquanto."
+        else:
+            # Arquivos de texto (txt, csv)
+            content = uploaded_file.read().decode("utf-8", errors="ignore")
+            if not content.strip():
+                return "O arquivo parece estar vazio."
+            prompt = f"Extraia produtos e preços deste texto e formate como 'Produto - R$ Preço':\n\n{content}"
+            response = model.generate_content(prompt)
+            return response.text
+    except Exception as e:
+        return f"❌ Erro na extração: {str(e)}"
 
 # --- UI Layout ---
 st.title("💊 Clara - Assistente Farmacêutica")
