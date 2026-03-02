@@ -79,7 +79,16 @@ def extract_from_file(uploaded_file):
             response = model.generate_content([prompt, image])
             return response.text
         elif uploaded_file.type == "application/pdf":
-            return "⚠️ O suporte direto a PDF via texto está sendo aprimorado. Por favor, use uma imagem (print) da lista por enquanto."
+            pdf_data = uploaded_file.read()
+            prompt = "Extraia todos os nomes de produtos e seus respectivos preços deste documento PDF. Formate como uma lista simples: 'Produto - R$ Preço'. Retorne apenas a lista."
+            response = model.generate_content([
+                prompt,
+                {
+                    "mime_type": "application/pdf",
+                    "data": pdf_data
+                }
+            ])
+            return response.text
         else:
             # Arquivos de texto (txt, csv)
             content = uploaded_file.read().decode("utf-8", errors="ignore")
