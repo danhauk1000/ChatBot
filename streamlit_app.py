@@ -71,7 +71,7 @@ def get_clara_response(user_input, history):
 
 def extract_from_file(uploaded_file):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-3.1-pro-preview')
         
         if uploaded_file.type.startswith('image'):
             image = Image.open(uploaded_file)
